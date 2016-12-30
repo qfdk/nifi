@@ -112,7 +112,18 @@ public class GenerateTableFetch extends AbstractDatabaseFetchProcessor {
     public static final Relationship REL_FAILURE = new Relationship.Builder()
             .name("failure")
             .description("This relationship is only used when SQL query execution (using an incoming FlowFile) failed. The incoming FlowFile will be penalized and routed to this relationship. "
-                    + "If no incoming connection(s) are specified, this relationship is unused.")
+                    + "If no incoming connection(s) are specified, this relationship is unused.").build();
+
+    public static final PropertyDescriptor AUTO_INCREMENT_KEY = new PropertyDescriptor.Builder()
+            .name("gen-table-fetch-partition-index")
+            .displayName("AUTO_INCREMENT(index) column name")
+            .description("The column has AUTO_INCREMENT attribute and index."
+                    + "If there is a column with AUTO_INCREMENT property and index in the database, we can use index instead of using OFFSET."
+                    + "The value must start by 1")
+            .defaultValue("null")
+            .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
+            .required(true)
+            .expressionLanguageSupported(false)
             .build();
 
     public GenerateTableFetch() {
@@ -129,6 +140,7 @@ public class GenerateTableFetch extends AbstractDatabaseFetchProcessor {
         pds.add(MAX_VALUE_COLUMN_NAMES);
         pds.add(QUERY_TIMEOUT);
         pds.add(PARTITION_SIZE);
+        pds.add(AUTO_INCREMENT_KEY);
         propDescriptors = Collections.unmodifiableList(pds);
     }
 
@@ -174,10 +186,12 @@ public class GenerateTableFetch extends AbstractDatabaseFetchProcessor {
 
         final DBCPService dbcpService = context.getProperty(DBCP_SERVICE).asControllerService(DBCPService.class);
         final DatabaseAdapter dbAdapter = dbAdapters.get(context.getProperty(DB_TYPE).getValue());
+
         final String tableName = context.getProperty(TABLE_NAME).evaluateAttributeExpressions(fileToProcess).getValue();
         final String columnNames = context.getProperty(COLUMN_NAMES).evaluateAttributeExpressions(fileToProcess).getValue();
         final String maxValueColumnNames = context.getProperty(MAX_VALUE_COLUMN_NAMES).evaluateAttributeExpressions(fileToProcess).getValue();
         final int partitionSize = context.getProperty(PARTITION_SIZE).evaluateAttributeExpressions(fileToProcess).asInteger();
+        final String indexValue =context.getProperty(AUTO_INCREMENT_KEY).evaluateAttributeExpressions(fileToProcess).getValue();
 
         final StateManager stateManager = context.getStateManager();
         final StateMap stateMap;
@@ -307,14 +321,18 @@ public class GenerateTableFetch extends AbstractDatabaseFetchProcessor {
                     if (columnNames != null) {
                         sqlFlowFile = session.putAttribute(sqlFlowFile, "generatetablefetch.columnNames", columnNames);
                     }
-                    if (StringUtils.isNotBlank(whereClause)) {
+                    if(!"null".equals(indexValue)){
+                        whereClause = indexValue + " >= " + limit * i;
+                        sqlFlowFile = session.putAttribute(sqlFlowFile, "generatetablefetch.whereClause", whereClause);
+                    }
+                    else if (StringUtils.isNotBlank(whereClause)) {
                         sqlFlowFile = session.putAttribute(sqlFlowFile, "generatetablefetch.whereClause", whereClause);
                     }
                     if (StringUtils.isNotBlank(maxColumnNames)) {
                         sqlFlowFile = session.putAttribute(sqlFlowFile, "generatetablefetch.maxColumnNames", maxColumnNames);
                     }
                     sqlFlowFile = session.putAttribute(sqlFlowFile, "generatetablefetch.limit", String.valueOf(limit));
-                    if (partitionSize != 0) {
+                    if (partitionSize != 0&&"null".equals(indexValue)) {
                         sqlFlowFile = session.putAttribute(sqlFlowFile, "generatetablefetch.offset", String.valueOf(offset));
                     }
                     session.transfer(sqlFlowFile, REL_SUCCESS);
