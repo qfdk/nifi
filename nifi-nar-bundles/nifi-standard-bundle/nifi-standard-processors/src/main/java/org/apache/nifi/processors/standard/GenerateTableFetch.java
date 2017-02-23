@@ -85,12 +85,12 @@ import java.util.stream.IntStream;
         + "per the State Management documentation")
 @WritesAttributes({
         @WritesAttribute(attribute = "generatetablefetch.sql.error", description = "If the processor has incoming connections, and processing an incoming flow file causes "
-        + "a SQL Exception, the flow file is routed to failure and this attribute is set to the exception message."),
+                + "a SQL Exception, the flow file is routed to failure and this attribute is set to the exception message."),
         @WritesAttribute(attribute = "generatetablefetch.tableName", description = "The name of the database table to be queried."),
         @WritesAttribute(attribute = "generatetablefetch.columnNames", description = "The comma-separated list of column names used in the query."),
         @WritesAttribute(attribute = "generatetablefetch.whereClause", description = "Where clause used in the query to get the expected rows."),
         @WritesAttribute(attribute = "generatetablefetch.maxColumnNames", description = "The comma-separated list of column names used to keep track of data "
-                    + "that has been returned since the processor started running."),
+                + "that has been returned since the processor started running."),
         @WritesAttribute(attribute = "generatetablefetch.limit", description = "The number of result rows to be fetched by the SQL statement."),
         @WritesAttribute(attribute = "generatetablefetch.offset", description = "Offset to be used to retrieve the corresponding partition.")
 })
@@ -256,7 +256,7 @@ public class GenerateTableFetch extends AbstractDatabaseFetchProcessor {
             long rowCount = 0;
 
             try (final Connection con = dbcpService.getConnection();
-                final Statement st = con.createStatement()) {
+                 final Statement st = con.createStatement()) {
 
                 final Integer queryTimeout = context.getProperty(QUERY_TIMEOUT).evaluateAttributeExpressions(fileToProcess).asTimePeriod(TimeUnit.SECONDS).intValue();
                 st.setQueryTimeout(queryTimeout); // timeout in seconds
