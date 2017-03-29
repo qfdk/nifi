@@ -126,17 +126,6 @@ public class GenerateTableFetch extends AbstractDatabaseFetchProcessor {
             .expressionLanguageSupported(false)
             .build();
 
-    public static final PropertyDescriptor AUTO_INCREMENT_KEY = new PropertyDescriptor.Builder()
-            .name("gen-table-fetch-partition-index")
-            .displayName("AUTO_INCREMENT(index) column name")
-            .description("The column has AUTO_INCREMENT attribute and index."
-                    + "If there is a column with AUTO_INCREMENT property and index in the database, we can use index instead of using OFFSET."
-                    + "The value must start by 1")
-            .defaultValue("null")
-            .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
-            .expressionLanguageSupported(false)
-            .build();
-
     public GenerateTableFetch() {
         final Set<Relationship> r = new HashSet<>();
         r.add(REL_SUCCESS);
@@ -202,12 +191,7 @@ public class GenerateTableFetch extends AbstractDatabaseFetchProcessor {
         final String columnNames = context.getProperty(COLUMN_NAMES).evaluateAttributeExpressions(fileToProcess).getValue();
         final String maxValueColumnNames = context.getProperty(MAX_VALUE_COLUMN_NAMES).evaluateAttributeExpressions(fileToProcess).getValue();
         final int partitionSize = context.getProperty(PARTITION_SIZE).evaluateAttributeExpressions(fileToProcess).asInteger();
-<<<<<<< HEAD
         final String indexValue =context.getProperty(AUTO_INCREMENT_KEY).evaluateAttributeExpressions(fileToProcess).getValue();
-=======
-        final String indexValue = context.getProperty(AUTO_INCREMENT_KEY).getValue();
-        String maxValueTmp = null;
->>>>>>> NIFI-3268 conflict resolution
 
         final StateManager stateManager = context.getStateManager();
         final StateMap stateMap;
@@ -311,7 +295,6 @@ public class GenerateTableFetch extends AbstractDatabaseFetchProcessor {
                             String newMaxValue = getMaxValueFromRow(resultSet, i, type, resultColumnCurrentMax, dbAdapter.getName());
                             if (newMaxValue != null) {
                                 statePropertyMap.put(fullyQualifiedStateKey, newMaxValue);
-                                maxValueTmp = newMaxValue;
                             }
                         } catch (ParseException | IOException pie) {
                             // Fail the whole thing here before we start creating flow files and such
@@ -326,7 +309,6 @@ public class GenerateTableFetch extends AbstractDatabaseFetchProcessor {
 
                 final long numberOfFetches = (partitionSize == 0) ? rowCount : (rowCount / partitionSize) + (rowCount % partitionSize == 0 ? 0 : 1);
 
-<<<<<<< HEAD
                 // Generate SQL statements to read "pages" of data
                 for (long i = 0; i < numberOfFetches; i++) {
                     long limit = partitionSize == 0 ? null : partitionSize;
@@ -354,37 +336,7 @@ public class GenerateTableFetch extends AbstractDatabaseFetchProcessor {
                         sqlFlowFile = session.putAttribute(sqlFlowFile, "generatetablefetch.offset", String.valueOf(offset));
                     }
                     session.transfer(sqlFlowFile, REL_SUCCESS);
-=======
-                if ("null".equals(indexValue)) {
-                    // Generate SQL statements to read "pages" of data
-                    for (long i = 0; i < numberOfFetches; i++) {
-                        long limit = partitionSize == 0 ? null : partitionSize;
-                        long offset = partitionSize == 0 ? null : i * partitionSize;
-                        final String query = dbAdapter.getSelectStatement(tableName, columnNames, whereClause, StringUtils.join(maxValueColumnNameList, ", "), limit, offset);
-                        FlowFile sqlFlowFile = (fileToProcess == null) ? session.create() : session.create(fileToProcess);
-                        sqlFlowFile = session.write(sqlFlowFile, out -> out.write(query.getBytes()));
-                        session.transfer(sqlFlowFile, REL_SUCCESS);
-                    }
-                } else {
-                    for (int i = 0; i < numberOfFetches; i++) {
-                        long limit = partitionSize == 0 ? null : partitionSize;
-                        int maxValue = Integer.parseInt(maxValueTmp);
-                        // to verify
-                        if (limit * i<maxValue) {
-                            whereClause = indexValue + " >= " + limit * i;
-                        } else {
-                            whereClause = indexValue + " >= " + maxValue;
-                        }
-
-                        final String query = dbAdapter.getSelectStatement(tableName, columnNames, whereClause,
-                                StringUtils.join(maxValueColumnNameList, ", "), limit, null);
-                        FlowFile sqlFlowFile = (fileToProcess == null) ? session.create() : session.create(fileToProcess);
-                        sqlFlowFile = session.write(sqlFlowFile, out -> out.write(query.getBytes()));
-                        session.transfer(sqlFlowFile, REL_SUCCESS);
-                    }
->>>>>>> NIFI-3268 conflict resolution
                 }
-
 
                 if (fileToProcess != null) {
                     session.remove(fileToProcess);
